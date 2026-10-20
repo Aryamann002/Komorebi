@@ -33,9 +33,12 @@ api/plan.js — Vercel Function (Node 24)
 | `lib/gemini.js` | Gemini call: structured output, timeout, one retry on transient errors |
 | `lib/planner.js` | Budget allocation and scheduling (pure) |
 | `lib/cache.js`, `lib/rate-limit.js`, `lib/http.js` | Small infrastructure helpers |
-| `public/` | Accessible vanilla-JS UI with no framework and no build step |
+| `public/index.html`, `landing.css` | Landing page at `/`: static HTML with no JavaScript |
+| `public/plan.html`, `app.js`, `render.js` | The planner at `/plan`: accessible vanilla JS with no framework and no build step |
 
-The interface was designed in **Google Stitch** and then hand-ported to semantic HTML and plain CSS. Stitch's export loads the Tailwind CDN and Google Fonts; the port keeps its palette and layout but uses system fonts and no third-party requests, so the strict CSP holds and the whole page is about 11 KB gzipped.
+`cleanUrls` in `vercel.json` serves `plan.html` at `/plan`. The landing page's event cards link to `/plan?type=wedding` (or `birthday`, `community`) to preselect the event type.
+
+Both pages were designed in **Google Stitch** and then hand-ported to semantic HTML and plain CSS. Stitch's export loads the Tailwind CDN, Google Fonts and remote images. The port keeps its palette and layout but uses system fonts and makes no third-party requests, so the strict CSP holds. `test/pages.test.js` checks this on every page.
 
 ## Run locally
 
@@ -46,12 +49,12 @@ npm install
 npm test               # unit, handler and SDK tests; no network or API key needed
 npm run lint
 vercel link            # once
-vercel env add GEMINI_API_KEY   # mark it Sensitive
-vercel env pull .env.local
-npm run dev            # vercel dev, at http://localhost:3000
+vercel env add GEMINI_API_KEY production --sensitive
+vercel env add GEMINI_API_KEY development --sensitive   # for local runs
+vercel dev             # http://localhost:3000
 ```
 
-`GEMINI_MODEL` optionally overrides the default model (`gemini-3.8-flash`).
+`GEMINI_MODEL` optionally overrides the default model, `gemini-3.5-flash-lite`. It returns a full plan in about 7-14 s. In testing, `gemini-3.8-flash` took 28-139 s, which is too slow for a 60 s function.
 
 ## Security
 
@@ -68,6 +71,6 @@ Semantic landmarks and a skip link; a label on every control; validation errors 
 
 ## Testing
 
-`node --test` runs all tests with no test framework, at 100% line coverage. They cover budget rounding, scheduling, both validation boundaries, prompt construction (including the injection boundary), caching, rate limiting, the full handler with a fake model (success, cache hits, 400/413/415/429/500/502/504), the Gemini client against a mocked network (structured-output config, one retry on 503, no retry on 400, timeout), and the browser's formatting helpers. CI (`.github/workflows/ci.yml`) runs lint, tests with coverage, and `npm audit` on every push.
+`node --test` runs all tests with no test framework, at 100% line coverage. They cover budget rounding, scheduling, both validation boundaries, prompt construction (including the injection boundary), caching, rate limiting, the full handler with a fake model (success, cache hits, 400/413/415/429/500/502/504), the Gemini client against a mocked network (structured-output config, one retry on 503, no retry on 400, timeout), the browser's formatting helpers, and every HTML page (links resolve, nothing the CSP would block, one `h1`). CI (`.github/workflows/ci.yml`) runs lint, tests with coverage, and `npm audit` on every push.
 
 > Plans are AI-generated suggestions. Always confirm prices and availability with vendors.

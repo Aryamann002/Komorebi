@@ -12,8 +12,7 @@ const IDEA_LABELS = {
  * Minimal element builder. Text is always assigned through text nodes, so
  * model output can never be interpreted as HTML.
  * @param {string} tag
- * @param {Record<string, unknown>} [props] `class`, `text`, `style` (object, applied via CSSOM so the
- *   CSP can forbid inline style attributes), `on<Event>` handlers, or attributes.
+ * @param {Record<string, unknown>} [props] `class`, `text`, `on<Event>` handlers, or attributes.
  * @param {(Node | string | null | false)[]} [children]
  */
 function el(tag, props = {}, children = []) {
@@ -22,7 +21,6 @@ function el(tag, props = {}, children = []) {
     if (value === undefined || value === false) continue;
     if (key === 'class') node.className = value;
     else if (key === 'text') node.textContent = value;
-    else if (key === 'style') Object.assign(node.style, value);
     else if (key.startsWith('on')) node.addEventListener(key.slice(2).toLowerCase(), value);
     else node.setAttribute(key, value === true ? '' : String(value));
   }
@@ -67,7 +65,7 @@ function budgetCard({ input, plan }) {
     el('tr', {}, [
       el('th', { scope: 'row', text: item.category }),
       el('td', { class: 'share' }, [
-        el('span', { class: 'bar', 'aria-hidden': 'true' }, [el('span', { style: { inlineSize: `${item.percent}%` } })]),
+        el('meter', { class: 'bar', min: 0, max: 100, value: item.percent, 'aria-hidden': 'true' }),
         el('span', { text: `${item.percent}%` }),
       ]),
       el('td', { class: 'amount', text: money(item.amount) }),

@@ -57,9 +57,19 @@ describe('generatePlan', () => {
       assert.equal(fetch.mock.callCount(), 1);
     });
 
+    // The SDK wraps our signal in its own controller, so a real timeout surfaces as AbortError.
     it('maps a timeout to 504', async () => {
-      mockFetch(new DOMException('The operation timed out.', 'TimeoutError'));
-      await assert.rejects(generatePlan(PROMPT), { status: 504, code: 'AI_TIMEOUT' });
+      for (const name of ['AbortError', 'TimeoutError']) {
+        mockFetch(new DOMException('The operation was aborted.', name));
+        await assert.rejects(generatePlan(PROMPT), { status: 504, code: 'AI_TIMEOUT' });
+      }
+    });
+
+    it('shares one deadline across the retry', async () => {
+      const timeout = mock.method(AbortSignal, 'timeout');
+      mockFetch(geminiError(503), geminiReply('{"ok":true}'));
+      await generatePlan(PROMPT);
+      assert.equal(timeout.mock.callCount(), 1);
     });
   });
 });

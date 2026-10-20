@@ -158,6 +158,10 @@ for (const chip of document.querySelectorAll('[data-suggestion]')) {
 
 document.getElementById('eventDate').min = localIsoDate();
 
+// Landing-page cards link here with ?type=; an unknown value matches no radio and changes nothing.
+const requestedType = new URLSearchParams(location.search).get('type');
+if (requestedType) form.elements.namedItem('eventType').value = requestedType;
+
 const saved = storage.load();
 if (saved?.input && saved?.plan) {
   try {
