@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
-import { daysBetween, formatDate, formatMoney, groupByMonth, localIsoDate } from '../public/format.js';
+import { IDEA_AREAS } from '../lib/schema.js';
+import {
+  IDEA_LABELS,
+  countdownLabel,
+  daysBetween,
+  formatDate,
+  formatMoney,
+  formatMonth,
+  groupByMonth,
+  localIsoDate,
+} from '../public/format.js';
 
 it('formats money without decimals in the chosen currency', () => {
   assert.equal(formatMoney(1500000, 'INR', 'en-IN'), '₹15,00,000');
@@ -9,6 +19,21 @@ it('formats money without decimals in the chosen currency', () => {
 
 it('formats calendar dates without timezone drift', () => {
   assert.equal(formatDate('2027-02-14', undefined, 'en-GB'), '14 Feb 2027');
+});
+
+it('formats a month heading', () => {
+  assert.equal(formatMonth('2027-02-01', 'en-GB'), 'February 2027');
+});
+
+it('labels the countdown, including a plan reopened after its event', () => {
+  assert.deepEqual(
+    [5, 1, 0, -3].map(countdownLabel),
+    ['5 days to go', '1 day to go', 'Event day is here', 'Event has passed'],
+  );
+});
+
+it('has a label for every idea area the API returns', () => {
+  assert.deepEqual(Object.keys(IDEA_LABELS), IDEA_AREAS);
 });
 
 it('counts whole days between ISO dates', () => {

@@ -1,12 +1,13 @@
-import { daysBetween, formatDate, formatMoney, formatMonth, groupByMonth, localIsoDate } from './format.js';
-
-const IDEA_LABELS = {
-  theme: 'Theme',
-  decor: 'Decor',
-  food: 'Food & drink',
-  activities: 'Activities',
-  'guest-experience': 'Guest experience',
-};
+import {
+  IDEA_LABELS,
+  countdownLabel,
+  daysBetween,
+  formatDate,
+  formatMoney,
+  formatMonth,
+  groupByMonth,
+  localIsoDate,
+} from './format.js';
 
 /**
  * Minimal element builder. Text is always assigned through text nodes, so
@@ -38,9 +39,8 @@ const card = (name, title, children) =>
   ]);
 
 function overview({ input, plan }, { onStartOver }) {
-  const daysLeft = daysBetween(localIsoDate(), input.eventDate);
   const stats = [
-    daysLeft > 0 ? `${daysLeft} days to go` : 'Event day is here',
+    countdownLabel(daysBetween(localIsoDate(), input.eventDate)),
     `${formatMoney(Math.round(input.budget / input.guestCount), input.currency)} per guest`,
     `${input.guestCount} guests`,
   ];
@@ -75,10 +75,17 @@ function budgetCard({ input, plan }) {
   return card('budget', 'Budget', [
     el('div', { class: 'table-scroll', tabindex: '0', role: 'region', 'aria-label': 'Budget table' }, [
       el('table', {}, [
-        el('thead', {}, [el('tr', {}, ['Category', 'Share', 'Amount', 'Money-saving tip'].map((text) => el('th', { scope: 'col', text })))]),
+        el('thead', {}, [
+          el('tr', {}, ['Category', 'Share', 'Amount', 'Money-saving tip'].map((text) => el('th', { scope: 'col', text }))),
+        ]),
         el('tbody', {}, rows),
         el('tfoot', {}, [
-          el('tr', {}, [el('th', { scope: 'row', text: 'Total' }), el('td', { text: '100%' }), el('td', { class: 'amount', text: money(input.budget) }), el('td')]),
+          el('tr', {}, [
+            el('th', { scope: 'row', text: 'Total' }),
+            el('td', { text: '100%' }),
+            el('td', { class: 'amount', text: money(input.budget) }),
+            el('td'),
+          ]),
         ]),
       ]),
     ]),
@@ -111,7 +118,12 @@ function vendorsCard({ plan, checked }, { onToggleVendor }) {
       const id = `vendor-${index}`;
       return el('li', {}, [
         el('div', { class: 'vendor-head' }, [
-          el('input', { type: 'checkbox', id, checked: done.has(index), onChange: (event) => onToggleVendor(index, event.target.checked) }),
+          el('input', {
+            type: 'checkbox',
+            id,
+            checked: done.has(index),
+            onChange: (event) => onToggleVendor(index, event.target.checked),
+          }),
           el('label', { for: id, text: vendor.category }),
           el('span', { class: 'book-by' }, [`Book by ${formatDate(vendor.dueDate)}`, ' ', doNowBadge(vendor)]),
         ]),

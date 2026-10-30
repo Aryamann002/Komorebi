@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
+import { EVENT_TYPES } from '../lib/event-types.js';
+import { CURRENCIES, LANGUAGES, MAX_BUDGET, MAX_GUESTS, TEXT_LIMITS } from '../lib/schema.js';
 
 const PUBLIC = new URL('../public/', import.meta.url);
 const pages = readdirSync(PUBLIC).filter((file) => file.endsWith('.html'));
@@ -43,3 +45,30 @@ for (const page of pages) {
     });
   });
 }
+
+// The form's own constraints duplicate the API's; if they drift, users hit server errors the form should prevent.
+describe('plan.html form matches the API', () => {
+  const html = readFileSync(new URL('plan.html', PUBLIC), 'utf8');
+  const field = (name) => html.match(new RegExp(`<(?:input|textarea)[^>]*\\sname="${name}"[^>]*>`))[0];
+  const attribute = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
+  const options = (name) => {
+    const select = html.match(new RegExp(`<select[^>]*\\sname="${name}"[\\s\\S]*?</select>`))[0];
+    return [...select.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
+  };
+
+  it('offers exactly the event types, currencies and languages the API accepts', () => {
+    const eventTypes = [...html.matchAll(/\sname="eventType" value="([^"]+)"/g)].map((match) => match[1]);
+    assert.deepEqual(eventTypes, Object.keys(EVENT_TYPES));
+    assert.deepEqual(options('currency'), CURRENCIES);
+    assert.deepEqual(options('language'), LANGUAGES);
+  });
+
+  it('bounds text and numbers the way the API does', () => {
+    for (const [name, { min, max }] of Object.entries(TEXT_LIMITS)) {
+      assert.equal(Number(attribute(field(name), 'minlength') ?? 0), min, `${name} minlength`);
+      assert.equal(Number(attribute(field(name), 'maxlength')), max, `${name} maxlength`);
+    }
+    assert.equal(Number(attribute(field('guestCount'), 'max')), MAX_GUESTS);
+    assert.equal(Number(attribute(field('budget'), 'max')), MAX_BUDGET);
+  });
+});

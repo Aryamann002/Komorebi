@@ -15,6 +15,7 @@ function fieldErrorsOf(fn) {
 }
 
 const withField = (field, value) => ({ ...validRequest(), [field]: value });
+const validPlanRefinement = () => ({ ...validRequest(), feedback: 'Cheaper please', previousPlan: validPlan() });
 
 describe('parsePlanRequest', () => {
   it('accepts a valid request and applies defaults', () => {
@@ -45,6 +46,19 @@ describe('parsePlanRequest', () => {
     it(`rejects an invalid ${field} with a readable message`, () => {
       const errors = fieldErrorsOf(() => parsePlanRequest(withField(field, value), TODAY));
       assert.match(errors[field], /\w+/);
+    });
+  }
+
+  const textBounds = { location: [2, 80], vibe: [0, 200], priorities: [0, 500], feedback: [3, 300] };
+  for (const [field, [min, max]] of Object.entries(textBounds)) {
+    it(`accepts a ${field} of ${min} to ${max} characters and nothing outside that`, () => {
+      const withLength = (length) => ({ ...validPlanRefinement(), [field]: 'x'.repeat(length) });
+      for (const length of [min, max]) {
+        assert.equal(parsePlanRequest(withLength(length), TODAY)[field], 'x'.repeat(length));
+      }
+      for (const length of [min - 1, max + 1].filter((value) => value >= 0)) {
+        assert.ok(fieldErrorsOf(() => parsePlanRequest(withLength(length), TODAY))[field]);
+      }
     });
   }
 

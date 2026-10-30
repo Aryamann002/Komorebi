@@ -1,5 +1,14 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** Display names for IDEA_AREAS in lib/schema.js; test/format.test.js keeps the two in step. */
+export const IDEA_LABELS = {
+  theme: 'Theme',
+  decor: 'Decor',
+  food: 'Food & drink',
+  activities: 'Activities',
+  'guest-experience': 'Guest experience',
+};
+
 /** @param {number} amount @param {string} currency @param {string} [locale] */
 export const formatMoney = (amount, currency, locale) =>
   new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
@@ -17,6 +26,13 @@ export const formatMonth = (isoDate, locale) => formatDate(isoDate, { month: 'lo
 
 /** @param {string} eventDate @param {string} today Both ISO dates. */
 export const daysBetween = (today, eventDate) => Math.round((Date.parse(eventDate) - Date.parse(today)) / DAY_MS);
+
+/** A saved plan can be reopened after its event, so past dates need their own wording. @param {number} daysLeft */
+export function countdownLabel(daysLeft) {
+  if (daysLeft > 1) return `${daysLeft} days to go`;
+  if (daysLeft === 1) return '1 day to go';
+  return daysLeft === 0 ? 'Event day is here' : 'Event has passed';
+}
 
 /** Today's calendar date in the viewer's own timezone, as YYYY-MM-DD. */
 export function localIsoDate(date = new Date()) {
