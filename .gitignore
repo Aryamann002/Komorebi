@@ -2,5 +2,7 @@ node_modules/
 coverage/
 .claude-flow/
 .vercel
+# Environment files hold secrets; only the empty template is committed.
+.env
 .env*
 !.env.example

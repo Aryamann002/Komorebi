@@ -5,7 +5,11 @@ import { EVENT_TYPES } from '../lib/event-types.js';
 import { CURRENCIES, LANGUAGES, MAX_BUDGET, MAX_GUESTS, TEXT_LIMITS } from '../lib/schema.js';
 
 const PUBLIC = new URL('../public/', import.meta.url);
-const pages = readdirSync(PUBLIC).filter((file) => file.endsWith('.html'));
+const pages = new Map(
+  readdirSync(PUBLIC)
+    .filter((file) => file.endsWith('.html'))
+    .map((file) => [file, readFileSync(new URL(file, PUBLIC), 'utf8')]),
+);
 
 /** Mirrors `cleanUrls` in vercel.json: `/` serves index.html and `/plan` serves plan.html. */
 function fileFor(pathname) {
@@ -13,9 +17,12 @@ function fileFor(pathname) {
   return new URL(path.includes('.') ? path : `${path}.html`, PUBLIC);
 }
 
-for (const page of pages) {
+/** @param {string} tag @returns {Record<string, string>} The tag's quoted attributes. */
+const attributesOf = (tag) =>
+  Object.fromEntries([...tag.matchAll(/\s([a-z-]+)="([^"]*)"/g)].map(([, name, value]) => [name, value]));
+
+for (const [page, html] of pages) {
   describe(page, () => {
-    const html = readFileSync(new URL(page, PUBLIC), 'utf8');
     const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]));
     const urls = [...html.matchAll(/\s(?:href|src)="([^"]+)"/g)].map((match) => match[1]);
 
@@ -48,27 +55,29 @@ for (const page of pages) {
 
 // The form's own constraints duplicate the API's; if they drift, users hit server errors the form should prevent.
 describe('plan.html form matches the API', () => {
-  const html = readFileSync(new URL('plan.html', PUBLIC), 'utf8');
-  const field = (name) => html.match(new RegExp(`<(?:input|textarea)[^>]*\\sname="${name}"[^>]*>`))[0];
-  const attribute = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
-  const options = (name) => {
-    const select = html.match(new RegExp(`<select[^>]*\\sname="${name}"[\\s\\S]*?</select>`))[0];
-    return [...select.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]);
-  };
+  const html = pages.get('plan.html');
+  const fields = [...html.matchAll(/<(?:input|textarea)\b[^>]*>/g)].map(([tag]) => attributesOf(tag));
+  const field = (name) => fields.find((attributes) => attributes.name === name);
+  const options = new Map(
+    [...html.matchAll(/<select[^>]*\sname="([^"]+)"[^>]*>([\s\S]*?)<\/select>/g)].map(([, name, body]) => [
+      name,
+      [...body.matchAll(/<option value="([^"]+)"/g)].map(([, value]) => value),
+    ]),
+  );
 
   it('offers exactly the event types, currencies and languages the API accepts', () => {
-    const eventTypes = [...html.matchAll(/\sname="eventType" value="([^"]+)"/g)].map((match) => match[1]);
+    const eventTypes = fields.filter((attributes) => attributes.name === 'eventType').map(({ value }) => value);
     assert.deepEqual(eventTypes, Object.keys(EVENT_TYPES));
-    assert.deepEqual(options('currency'), CURRENCIES);
-    assert.deepEqual(options('language'), LANGUAGES);
+    assert.deepEqual(options.get('currency'), CURRENCIES);
+    assert.deepEqual(options.get('language'), LANGUAGES);
   });
 
   it('bounds text and numbers the way the API does', () => {
     for (const [name, { min, max }] of Object.entries(TEXT_LIMITS)) {
-      assert.equal(Number(attribute(field(name), 'minlength') ?? 0), min, `${name} minlength`);
-      assert.equal(Number(attribute(field(name), 'maxlength')), max, `${name} maxlength`);
+      assert.equal(Number(field(name)?.minlength ?? 0), min, `${name} minlength`);
+      assert.equal(Number(field(name)?.maxlength), max, `${name} maxlength`);
     }
-    assert.equal(Number(attribute(field('guestCount'), 'max')), MAX_GUESTS);
-    assert.equal(Number(attribute(field('budget'), 'max')), MAX_BUDGET);
+    assert.equal(Number(field('guestCount')?.max), MAX_GUESTS);
+    assert.equal(Number(field('budget')?.max), MAX_BUDGET);
   });
 });
